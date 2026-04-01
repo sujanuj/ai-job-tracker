@@ -440,6 +440,11 @@ Better Bullet Suggestions:
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+
+@app.route("/")
+def home():
+    return "AI Job Tracker Backend is Live 🚀"
 
 # ================= RUN =================
 import os
