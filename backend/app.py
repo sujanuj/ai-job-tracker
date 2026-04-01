@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask import send_from_directory
 from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
@@ -15,11 +16,7 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-@app.route("/")
-def home():
-    return jsonify({
-        "message": "AI Job Tracker Backend is Live 🚀"
-    })
+
 
 app.config["JWT_SECRET_KEY"] = "super-secret-key"
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///jobs.db'
@@ -447,6 +444,9 @@ Better Bullet Suggestions:
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
+@app.route("/")
+def serve_ui():
+    return send_from_directory(".", "index.html")    
 
 
 # ================= RUN =================
