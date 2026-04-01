@@ -442,5 +442,8 @@ Better Bullet Suggestions:
         return jsonify({"error": str(e)}), 500
 
 # ================= RUN =================
+import os
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000, debug=False)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
