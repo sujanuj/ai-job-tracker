@@ -1040,8 +1040,9 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 <script>
 
 // GLOBALS 
-let token = localStorage.getItem("token"); // JWT saved in browser
-const BASE = "https://ai-job-tracker-413l.onrender.com";   // Flask server URL
+let token = localStorage.getItem("token");
+
+const BASE = "https://ai-job-tracker-4131.onrender.com";
 let selectedTone = "professional";          // default cover letter tone
 
 
@@ -1081,16 +1082,25 @@ function login() {
       password: password.value
     })
   })
-  .then(r => r.json())
+  .then(res => {
+    if (!res.ok) {
+      throw new Error("Server error: " + res.status);
+    }
+    return res.json();
+  })
   .then(data => {
     if (data.token) {
-      // Save token to localStorage so it persists on refresh
       token = data.token;
       localStorage.setItem("token", token);
-      loadJobs(); // load jobs right after login
+      alert("✅ Login successful");
+      loadJobs();
     } else {
       alert(data.error || "Login failed");
     }
+  })
+  .catch(err => {
+    console.error(err);
+    alert("❌ Backend error — check console");
   });
 }
 
@@ -1103,21 +1113,36 @@ function logout() {
 
 // ADD JOB 
 function addJob() {
+  if (!token) {
+    alert("⚠️ Please login first");
+    return;
+  }
   fetch(BASE + "/add-job", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": "Bearer " + token  // JWT for auth
+      "Authorization": "Bearer " + token
     },
     body: JSON.stringify({
-      company:  company.value,
-      role:     role.value,
-      link:     link.value,
-      notes:    notes.value,
+      company: company.value,
+      role: role.value,
+      link: link.value,
+      notes: notes.value,
       deadline: deadline.value
     })
   })
-  .then(() => loadJobs()); // refresh the job list after adding
+  .then(res => {
+    if (!res.ok) throw new Error("Failed");
+    return res.json();
+  })
+  .then(() => {
+    alert("✅ Job added");
+    loadJobs(); // 🔥 MUST
+  })
+  .catch(err => {
+    console.error(err);
+    alert("❌ Error adding job");
+  });
 }
 
 
@@ -1184,15 +1209,21 @@ function updateDeadlineBanner(jobs) {
 
 // LOAD JOBS 
 function loadJobs() {
+  if (!token) {
+    alert("⚠️ Please login first");
+    return;
+  }
   fetch(BASE + "/jobs", {
     headers: { "Authorization": "Bearer " + token }
   })
-  .then(r => r.json())
+  .then(res => {
+    if (!res.ok) throw new Error("Failed to load jobs");
+    return res.json();
+  })
   .then(data => {
     let countApplied = 0, countInterview = 0, countRejected = 0;
     const jobsDiv = document.getElementById("jobs");
 
-    // Handle empty state
     if (!data.length) {
       jobsDiv.innerHTML = `<div class="empty"><div class="empty-icon">🗂️</div>No applications yet</div>`;
       applied.innerText = interview.innerText = rejected.innerText = 0;
@@ -1201,60 +1232,71 @@ function loadJobs() {
       return;
     }
 
-    // Update the deadline warning banner
     updateDeadlineBanner(data);
 
-    // Build job cards
     jobsDiv.innerHTML = "";
+
     data.forEach(job => {
-
-      // Count by status for stats + chart
-      if (job.status === "Applied")   countApplied++;
+      if (job.status === "Applied") countApplied++;
       if (job.status === "Interview") countInterview++;
-      if (job.status === "Rejected")  countRejected++;
+      if (job.status === "Rejected") countRejected++;
 
-      // Get deadline info
-      const ds       = job.deadline ? getDeadlineStatus(job.deadline) : null;
+      const ds = job.deadline ? getDeadlineStatus(job.deadline) : null;
       const isUrgent = ds && ds.diff <= 2;
 
-      // Pick badge color based on status
-      const badgeClass = job.status === "Interview" ? "badge-interview"
-                       : job.status === "Rejected"  ? "badge-rejected"
-                       : "badge-applied";
+      const badgeClass =
+        job.status === "Interview" ? "badge-interview" :
+        job.status === "Rejected" ? "badge-rejected" :
+        "badge-applied";
 
-      // Add the job card HTML
       jobsDiv.innerHTML += `
         <div class="job ${isUrgent ? 'urgent-job' : ''}">
           <div class="job-left">
             <div class="job-company">${job.company}${isUrgent ? ' 🔔' : ''}</div>
             <div class="job-role">${job.role}</div>
-            <div class="job-meta">
-              ${job.link   ? `<a href="${job.link}" target="_blank">🔗 Link</a>` : ""}
-              ${job.notes  ? `<span class="job-notes">${job.notes}</span>` : ""}
-              ${ds         ? `<span class="job-deadline ${ds.cls}">📅 ${ds.label}</span>` : ""}
-            </div>
           </div>
           <div class="job-right">
-            <span class="badge ${badgeClass}">${job.status}</span>
-            <button class="btn btn-success" style="padding:6px 12px; font-size:12px" onclick="update(${job.id}, 'Interview')">→ Interview</button>
-            <button class="btn btn-danger"  style="padding:6px 12px; font-size:12px" onclick="update(${job.id}, 'Rejected')">Reject</button>
-            <button class="btn btn-ghost"   style="padding:6px 10px; font-size:12px" onclick="deleteJob(${job.id})">✕</button>
-          </div>
+  <span class="badge ${badgeClass}">${job.status}</span>
+
+  <button class="btn btn-success"
+    style="padding:6px 12px; font-size:12px"
+    onclick="update(${job.id}, 'Interview')">
+    → Interview
+  </button>
+
+  <button class="btn btn-danger"
+    style="padding:6px 12px; font-size:12px"
+    onclick="update(${job.id}, 'Rejected')">
+    Reject
+  </button>
+
+  <button class="btn btn-ghost"
+    style="padding:6px 10px; font-size:12px"
+    onclick="deleteJob(${job.id})">
+    ✕
+  </button>
+</div>
         </div>`;
     });
 
-    // Update stat numbers
-    applied.innerText   = countApplied;
+    applied.innerText = countApplied;
     interview.innerText = countInterview;
-    rejected.innerText  = countRejected;
+    rejected.innerText = countRejected;
 
     drawChart(countApplied, countInterview, countRejected);
+  })
+  .catch(err => {
+    console.error(err);
+    alert("❌ Failed to load jobs");
   });
 }
 
-
 //  UPDATE JOB STATUS 
 function update(id, status) {
+  if (!token) {
+    alert("⚠️ Please login first");
+    return;
+  }
   fetch(BASE + "/update-status/" + id, {
     method: "PUT",
     headers: {
@@ -1263,17 +1305,35 @@ function update(id, status) {
     },
     body: JSON.stringify({ status })
   })
-  .then(() => loadJobs()); // refresh after update
+  .then(res => {
+    if (!res.ok) throw new Error("Failed");
+    loadJobs();
+  })
+  .catch(err => {
+    console.error(err);
+    alert("❌ Operation failed");
+  });
 }
 
 
 //  DELETE JOB 
 function deleteJob(id) {
+  if (!token) {
+    alert("⚠️ Please login first");
+    return;
+  } 
   fetch(BASE + "/delete-job/" + id, {
     method: "DELETE",
     headers: { "Authorization": "Bearer " + token }
   })
-  .then(() => loadJobs()); // refresh after delete
+  .then(res => {
+    if (!res.ok) throw new Error("Failed");
+    loadJobs();
+  })
+  .catch(err => {
+    console.error(err);
+    alert("❌ Operation failed");
+  });
 }
 
 
