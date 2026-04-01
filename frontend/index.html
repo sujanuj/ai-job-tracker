@@ -1041,7 +1041,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 
 // GLOBALS 
 let token = localStorage.getItem("token"); // JWT saved in browser
-const BASE = "http://127.0.0.1:8000";      // Flask server URL
+const BASE = window.location.origin;     // Flask server URL
 let selectedTone = "professional";          // default cover letter tone
 
 
