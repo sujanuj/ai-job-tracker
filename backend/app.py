@@ -452,6 +452,9 @@ import os
 def serve_ui():
     return send_from_directory(os.path.join(os.getcwd(), "backend"), "index.html")
 
+with app.app_context():
+    db.create_all()
+
 
 # ================= RUN =================
 import os
