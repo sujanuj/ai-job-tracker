@@ -24,7 +24,12 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 jwt = JWTManager(app)
-client = OpenAI()
+api_key = os.getenv("OPENAI_API_KEY")
+
+if api_key:
+    client = OpenAI(api_key=api_key)
+else:
+    client = None
 
 # MODELS 
 class User(db.Model):
@@ -167,6 +172,8 @@ import json
 
 @app.route("/generate-questions", methods=["POST"])
 def generate_questions():
+    if not client:
+        return jsonify({"error": "AI not configured"}), 500
     data = request.json
 
     role = data.get("role")
@@ -211,6 +218,8 @@ Return STRICT JSON like this:
 # JOB MATCH 
 @app.route("/match-job", methods=["POST"])
 def match_job():
+    if not client:
+        return jsonify({"error": "AI not configured"}), 500
     data = request.json
     resume = data.get("resume")
     job_desc = data.get("job_description")
@@ -253,6 +262,8 @@ Format:
 # RESUME OPTIMIZER (FIXED) 
 @app.route("/optimize-resume", methods=["POST"])
 def optimize_resume():
+    if not client:
+        return jsonify({"error": "AI not configured"}), 500
     data = request.json
 
     resume = data.get("resume")
@@ -302,6 +313,8 @@ Final ATS Optimized Resume:
 
 @app.route("/generate-cover-letter", methods=["POST"])
 def generate_cover_letter():
+    if not client:
+        return jsonify({"error": "AI not configured"}), 500
     data = request.json
 
     resume = data.get("resume")
@@ -347,6 +360,8 @@ Return ONLY the cover letter text. No preamble, no notes, no extra explanation.
 
 @app.route("/interview-prep", methods=["POST"])
 def interview_prep():
+    if not client:
+        return jsonify({"error": "AI not configured"}), 500
     data = request.json
     role = data.get("role", "").strip()
     job_desc = data.get("job_description", "").strip()
@@ -400,6 +415,8 @@ Rules:
     
 @app.route("/analyze", methods=["POST"])
 def analyze_resume():
+    if not client:
+        return jsonify({"error": "AI not configured"}), 500
     data = request.json
 
     resume = data.get("resume")
