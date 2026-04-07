@@ -463,7 +463,7 @@ Better Bullet Suggestions:
     
 @app.route("/")
 def serve_ui():
-    return send_file("index.html")
+    return send_file("../index.html")
 
 with app.app_context():
     db.create_all()
