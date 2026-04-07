@@ -448,7 +448,7 @@ import os
 
 @app.route("/")
 def serve_ui():
-    return send_from_directory(".", "index.html")  
+    return send_from_directory("backend", "index.html")
 
 
 # ================= RUN =================
