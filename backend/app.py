@@ -446,9 +446,11 @@ Better Bullet Suggestions:
     
 import os
 
+import os
+
 @app.route("/")
 def serve_ui():
-    return send_from_directory(".", "index.html")
+    return send_from_directory(os.path.join(os.getcwd(), "backend"), "index.html")
 
 
 # ================= RUN =================
