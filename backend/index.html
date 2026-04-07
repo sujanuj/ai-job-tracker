@@ -1,0 +1,1729 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AI Job Tracker</title>
+
+<!-- Chart library for the donut chart -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- PDF download library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+
+
+:root {
+  --bg:       #080c12;       /* main background */
+  --surface:  #0e1520;       /* card background */
+  --surface2: #141d2e;       /* input background */
+  --border:   rgba(255,255,255,0.07);
+  --accent:   #3d9bff;       /* blue  — Applied */
+  --accent2:  #00e5b0;       /* teal  — Interview */
+  --accent3:  #ff5e7d;       /* red   — Rejected */
+  --accent4:  #c084fc;       /* purple — Cover Letter */
+  --accent5:  #fbbf24;       /* amber — Deadlines + Interview Prep */
+  --text:     #e8edf5;
+  --muted:    #6b7a96;
+  --red:      #ff5e7d;
+  --yellow:   #ffc94d;
+  --green:    #00e5b0;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Ambient glow blobs in background corners */
+body::before {
+  content: '';
+  position: fixed;
+  top: -200px; left: -200px;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(61,155,255,0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+body::after {
+  content: '';
+  position: fixed;
+  bottom: -200px; right: -200px;
+  width: 700px; height: 700px;
+  background: radial-gradient(circle, rgba(0,229,176,0.06) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Main wrapper — keeps content centered */
+.container {
+  max-width: 1080px;
+  margin: auto;
+  padding: 40px 24px;
+  position: relative;
+  z-index: 1;
+}
+
+#deadlineBanner {
+  display: none; /* hidden by default, JS shows it */
+  background: linear-gradient(135deg, rgba(251,191,36,0.12), rgba(255,94,125,0.08));
+  border: 1px solid rgba(251,191,36,0.3);
+  border-radius: 14px;
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  animation: bannerPulse 2.5s ease-in-out infinite;
+}
+
+/* Pulsing glow on the banner border */
+@keyframes bannerPulse {
+  0%, 100% { border-color: rgba(251,191,36,0.3); box-shadow: none; }
+  50%       { border-color: rgba(251,191,36,0.6); box-shadow: 0 0 20px rgba(251,191,36,0.1); }
+}
+
+.banner-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Shaking bell icon animation */
+.banner-icon {
+  font-size: 20px;
+  animation: bellShake 1.5s ease-in-out infinite;
+}
+@keyframes bellShake {
+  0%, 100% { transform: rotate(0deg); }
+  15%       { transform: rotate(12deg); }
+  30%       { transform: rotate(-10deg); }
+  45%       { transform: rotate(8deg); }
+  60%       { transform: rotate(0deg); }
+}
+
+.banner-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent5);
+  flex: 1;
+}
+
+/* Small pills showing each urgent job */
+.banner-jobs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.banner-job-pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(251,191,36,0.15);
+  color: var(--accent5);
+  border: 1px solid rgba(251,191,36,0.25);
+}
+
+/* Overdue jobs turn red */
+.banner-job-pill.overdue {
+  background: rgba(255,94,125,0.15);
+  color: var(--red);
+  border-color: rgba(255,94,125,0.3);
+}
+
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* The little green pulsing dot in the logo */
+.logo-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent2);
+  box-shadow: 0 0 10px var(--accent2);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.8); }
+}
+
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s, border-color 0.2s;
+}
+.stat:hover {
+  transform: translateY(-2px);
+  border-color: rgba(61,155,255,0.3);
+}
+
+/* Colored top line on each stat card */
+.stat::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+.stat:nth-child(1)::before { background: linear-gradient(90deg, var(--accent),  transparent); }
+.stat:nth-child(2)::before { background: linear-gradient(90deg, var(--accent2), transparent); }
+.stat:nth-child(3)::before { background: linear-gradient(90deg, var(--red),     transparent); }
+
+.stat-number {
+  font-family: 'Syne', sans-serif;
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.stat:nth-child(1) .stat-number { color: var(--accent); }
+.stat:nth-child(2) .stat-number { color: var(--accent2); }
+.stat:nth-child(3) .stat-number { color: var(--red); }
+
+.stat-label {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+}
+
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 28px;
+  margin-bottom: 20px;
+  transition: border-color 0.2s;
+}
+.card:hover {
+  border-color: rgba(255,255,255,0.12);
+}
+
+/* Title at top of each card */
+.card-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title span { font-size: 18px; }
+
+/* Cover Letter card — purple theme */
+.card-cover {
+  border-color: rgba(192,132,252,0.15);
+  position: relative;
+  overflow: hidden;
+}
+.card-cover::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent4), transparent);
+}
+.card-cover .card-title { color: var(--accent4); }
+
+/* Interview Prep card — amber/gold theme */
+.card-interview {
+  border-color: rgba(251,191,36,0.15);
+  position: relative;
+  overflow: hidden;
+}
+.card-interview::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent5), transparent);
+}
+.card-interview .card-title { color: var(--accent5); }
+
+
+.input-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+input,
+textarea,
+select {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 14px;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--accent);
+  background: rgba(61,155,255,0.05);
+}
+select option    { background: #1a2538; color: var(--text); }
+input::placeholder,
+textarea::placeholder { color: var(--muted); }
+textarea { resize: vertical; min-height: 90px; }
+
+
+.tone-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.tone-btn {
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.tone-btn:hover        { border-color: var(--accent4); color: var(--accent4); }
+.tone-btn.active       { background: rgba(192,132,252,0.12); border-color: var(--accent4); color: var(--accent4); }
+
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: none;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+/* Blue — main actions */
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { background: #5aabff; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(61,155,255,0.3); }
+
+/* Amber — Interview Prep */
+.btn-amber { background: rgba(251,191,36,0.12); color: var(--accent5); border: 1px solid rgba(251,191,36,0.3); }
+.btn-amber:hover { background: rgba(251,191,36,0.22); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(251,191,36,0.15); }
+
+/* Purple — Cover Letter */
+.btn-purple { background: rgba(192,132,252,0.15); color: var(--accent4); border: 1px solid rgba(192,132,252,0.3); }
+.btn-purple:hover { background: rgba(192,132,252,0.25); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(192,132,252,0.2); }
+
+/* Teal — success actions */
+.btn-success { background: rgba(0,229,176,0.12); color: var(--accent2); border: 1px solid rgba(0,229,176,0.2); }
+.btn-success:hover { background: rgba(0,229,176,0.2); }
+
+/* Grey — secondary actions */
+.btn-ghost { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+.btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+/* Red — delete/reject */
+.btn-danger { background: rgba(255,94,125,0.12); color: var(--red); border: 1px solid rgba(255,94,125,0.2); }
+.btn-danger:hover { background: rgba(255,94,125,0.2); }
+
+/* Row of buttons at bottom of a card */
+.btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+
+.auth-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+
+.job {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  transition: border-color 0.2s, transform 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.job:hover {
+  border-color: rgba(255,255,255,0.15);
+  transform: translateX(3px); /* slides right a tiny bit on hover */
+}
+
+/* Urgent job — glowing amber border + animated pulse */
+.job.urgent-job {
+  border-color: rgba(251,191,36,0.35);
+  animation: urgentPulse 2s ease-in-out infinite;
+}
+
+/* Colored left stripe on urgent jobs */
+.job.urgent-job::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--accent5), var(--red));
+  border-radius: 3px 0 0 3px;
+}
+
+@keyframes urgentPulse {
+  0%, 100% { border-color: rgba(251,191,36,0.3); }
+  50%       { border-color: rgba(251,191,36,0.6); box-shadow: 0 0 12px rgba(251,191,36,0.08); }
+}
+
+.job-left  { flex: 1; min-width: 0; }
+
+.job-company {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* adds "..." if name too long */
+}
+
+.job-role  { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+
+.job-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.job-meta a  { font-size: 12px; color: var(--accent); text-decoration: none; }
+.job-notes   { font-size: 12px; color: var(--muted); font-style: italic; }
+
+/* Deadline badge — color depends on urgency */
+.job-deadline {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.job-deadline.overdue { background: rgba(255,94,125,0.2);   color: var(--red);     border: 1px solid rgba(255,94,125,0.35); animation: badgeBlink 1.2s ease-in-out infinite; }
+.job-deadline.today   { background: rgba(251,191,36,0.2);   color: var(--accent5); border: 1px solid rgba(251,191,36,0.35); animation: badgeBlink 1.5s ease-in-out infinite; }
+.job-deadline.soon    { background: rgba(251,191,36,0.1);   color: var(--accent5); border: 1px solid rgba(251,191,36,0.2); }
+.job-deadline.ok      { background: rgba(0,229,176,0.08);   color: var(--accent2); border: 1px solid rgba(0,229,176,0.15); }
+
+/* Blink animation for overdue/today badges */
+@keyframes badgeBlink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+
+.job-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Status badge (Applied / Interview / Rejected) */
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 3px 9px;
+  border-radius: 6px;
+}
+.badge-applied   { background: rgba(61,155,255,0.15);  color: var(--accent); }
+.badge-interview { background: rgba(0,229,176,0.12);   color: var(--accent2); }
+.badge-rejected  { background: rgba(255,94,125,0.12);  color: var(--red); }
+
+
+.bar-wrap {
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 8px 0;
+  height: 32px;
+}
+
+.bar-fill {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); /* smooth slide-in */
+  min-width: 40px;
+}
+.bar-fill.green  { background: linear-gradient(90deg, #00e5b0, #00c495); color: #003d2e; }
+.bar-fill.yellow { background: linear-gradient(90deg, #ffc94d, #ffb020); color: #3d2800; }
+.bar-fill.red    { background: linear-gradient(90deg, #ff5e7d, #e03456); color: white; }
+
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.tag {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 11px;
+  border-radius: 6px;
+  background: rgba(61,155,255,0.12);
+  color: var(--accent);
+  border: 1px solid rgba(61,155,255,0.2);
+}
+.tag-red {
+  background: rgba(255,94,125,0.12);
+  color: var(--red);
+  border: 1px solid rgba(255,94,125,0.2);
+}
+
+/* Small uppercase label above sections */
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+  margin: 16px 0 8px;
+}
+
+
+/* Tab bar (Technical / Behavioral) */
+.ip-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface2);
+  padding: 4px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  width: fit-content;
+}
+
+.ip-tab {
+  padding: 7px 18px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.ip-tab.active {
+  background: rgba(251,191,36,0.15);
+  color: var(--accent5);
+}
+
+/* Question panels — hidden unless .active */
+.ip-questions        { display: none; }
+.ip-questions.active { display: block; }
+
+/* Each question is an expandable accordion card */
+.ip-question-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.ip-question-card:hover { border-color: rgba(251,191,36,0.25); }
+
+/* Clickable header row */
+.ip-question-header {
+  padding: 14px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none; /* prevents text selection on click */
+}
+
+/* "Q1", "Q2" number badge */
+.ip-q-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--accent5);
+  background: rgba(251,191,36,0.1);
+  border: 1px solid rgba(251,191,36,0.2);
+  padding: 2px 8px;
+  border-radius: 5px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.ip-q-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  flex: 1;
+  line-height: 1.5;
+}
+
+/* Down arrow that rotates when open */
+.ip-chevron {
+  font-size: 12px;
+  color: var(--muted);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.ip-question-card.open .ip-chevron { transform: rotate(180deg); }
+
+/* Answer area — only shows when card has .open class */
+.ip-answer {
+  display: none;
+  padding: 14px 18px 16px 50px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #9aafc8;
+  border-top: 1px solid var(--border);
+}
+.ip-question-card.open .ip-answer { display: block; }
+
+.ip-answer-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent2);
+  margin-bottom: 6px;
+}
+
+
+.cl-output {
+  background: linear-gradient(135deg, rgba(192,132,252,0.06), rgba(61,155,255,0.04));
+  border: 1px solid rgba(192,132,252,0.15);
+  border-radius: 14px;
+  padding: 28px 32px;
+  font-size: 15px;
+  line-height: 1.85;
+  color: #c8d4e8;
+  font-family: 'DM Sans', sans-serif;
+  white-space: pre-wrap; /* keeps line breaks from the AI */
+  position: relative;
+}
+
+/* Big decorative quotation mark */
+.cl-output::before {
+  content: '"';
+  position: absolute;
+  top: -10px; left: 20px;
+  font-size: 60px;
+  color: rgba(192,132,252,0.2);
+  font-family: Georgia, serif;
+  line-height: 1;
+}
+
+.cl-word-count {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: right;
+}
+
+/* Copy button overlaid on top-right of cover letter */
+.copy-btn {
+  position: absolute;
+  top: 14px; right: 14px;
+  padding: 5px 12px;
+  border-radius: 7px;
+  border: 1px solid rgba(192,132,252,0.25);
+  background: rgba(192,132,252,0.1);
+  color: var(--accent4);
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.copy-btn:hover { background: rgba(192,132,252,0.2); }
+
+
+#resumePDF {
+  background: white;
+  color: #111;
+  padding: 28px;
+  font-family: Georgia, serif;
+  font-size: 13px;
+  line-height: 1.7;
+  border-radius: 12px;
+  margin-top: 16px;
+}
+#resumePDF h3 {
+  color: #1a56db !important;
+  font-family: 'Syne', sans-serif !important;
+  border-bottom: 1px solid #e0e8ff !important;
+}
+
+
+#aiResult h2,
+#matchResult h2 {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  margin: 16px 0 8px;
+}
+
+#aiResult h3,
+#matchResult h3,
+#optResult h3,
+#optResult h4 {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--accent2);
+  margin: 18px 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(0,229,176,0.15);
+}
+
+#optResult h4 {
+  color: var(--accent);
+  border-color: rgba(61,155,255,0.15);
+}
+
+#matchResult ul,
+#optResult ul {
+  padding-left: 18px;
+  line-height: 1.8;
+  font-size: 14px;
+  color: #a8b4cc;
+}
+
+/* 
+   ANALYTICS CHART
+   */
+.chart-container {
+  width: 260px;
+  height: 260px;
+  margin: auto;
+}
+
+hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+/* 
+   LOADING SPINNER
+    */
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  padding: 16px 0;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent); /* only the top is colored — makes it spin visually */
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+.spinner-purple { border-top-color: var(--accent4); }
+.spinner-amber  { border-top-color: var(--accent5); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 
+   EMPTY STATE
+    */
+.empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.empty-icon { font-size: 32px; margin-bottom: 10px; }
+
+/* MOBILE RESPONSIVE */
+@media (max-width: 680px) {
+  .grid-2    { grid-template-columns: 1fr; }
+  .auth-row  { grid-template-columns: 1fr; }
+  .input-row { grid-template-columns: 1fr; }
+  .stats     { grid-template-columns: 1fr; }
+  .job       { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <!-- ==================== HEADER ==================== -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-dot"></div>
+      Job Tracker AI
+    </div>
+    <button class="btn btn-ghost" onclick="logout()">Sign out</button>
+  </div>
+
+  <!-- ==================== DEADLINE BANNER ====================
+       This is hidden by default. JS shows it when jobs are due soon. -->
+  <div id="deadlineBanner">
+    <div class="banner-inner">
+      <div class="banner-icon">🔔</div>
+      <div style="flex:1">
+        <div class="banner-text" id="bannerText"></div>
+        <div class="banner-jobs" id="bannerJobs"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== STATS ==================== -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-number" id="applied">0</div>
+      <div class="stat-label">Applied</div>
+    </div>
+    <div class="stat">
+      <div class="stat-number" id="interview">0</div>
+      <div class="stat-label">Interview</div>
+    </div>
+    <div class="stat">
+      <div class="stat-number" id="rejected">0</div>
+      <div class="stat-label">Rejected</div>
+    </div>
+  </div>
+
+  <!-- ==================== LOGIN + ADD JOB (side by side) ==================== -->
+  <div class="grid-2">
+
+    <!-- Login Card -->
+    <div class="card">
+      <div class="card-title"><span>🔐</span> Account</div>
+      <div class="auth-row">
+        <input id="username" placeholder="Username">
+        <input id="password" type="password" placeholder="Password">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="register()">Register</button>
+        <button class="btn btn-success" onclick="login()">Login</button>
+      </div>
+    </div>
+
+    <!-- Add Job Card -->
+    <div class="card">
+      <div class="card-title"><span>➕</span> Add Job</div>
+      <div class="input-row">
+        <input id="company" placeholder="Company">
+        <input id="role"    placeholder="Role">
+      </div>
+      <div class="input-row">
+        <input id="link"  placeholder="Job Link (URL)">
+        <input id="notes" placeholder="Notes">
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; margin-top:6px;">
+        <input id="deadline" type="date" style="flex:1">
+        <button class="btn btn-primary" onclick="addJob()">Add Job</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ==================== AI RESUME ANALYZER ==================== -->
+  <div class="card">
+    <div class="card-title"><span>🤖</span> AI Resume Analyzer</div>
+    <textarea id="resume" placeholder="Paste your resume here..."></textarea>
+    <div style="display:flex; gap:10px; margin-top:10px;">
+      <input id="jobRoleAI" placeholder="Target Role (e.g. Frontend Engineer)" style="flex:1">
+      <button class="btn btn-primary" onclick="analyzeResume()">Analyze</button>
+    </div>
+    <div id="aiResult"></div>
+  </div>
+
+  <!-- ==================== JOB MATCHER + RESUME OPTIMIZER (side by side) ==================== -->
+  <div class="grid-2">
+
+    <!-- Job Matcher -->
+    <div class="card">
+      <div class="card-title"><span>🎯</span> Job Matcher</div>
+      <textarea id="resumeMatch" placeholder="Paste resume..."      style="min-height:80px; margin-bottom:8px;"></textarea>
+      <textarea id="jobDesc"     placeholder="Paste job description..." style="min-height:80px;"></textarea>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="matchJob()">Match</button>
+      </div>
+      <div id="matchResult"></div>
+    </div>
+
+    <!-- Resume Optimizer -->
+    <div class="card">
+      <div class="card-title"><span>🔥</span> Resume Optimizer</div>
+      <textarea id="resumeOpt"  placeholder="Paste resume..."          style="min-height:80px; margin-bottom:8px;"></textarea>
+      <textarea id="jobDescOpt" placeholder="Paste job description..." style="min-height:80px;"></textarea>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="optimizeResume()">Optimize</button>
+        <button class="btn btn-ghost"   onclick="downloadResumePDF()">📄 Download PDF</button>
+      </div>
+      <div id="optResult"></div>
+    </div>
+
+  </div>
+
+  <!-- ==================== COVER LETTER GENERATOR ==================== -->
+  <div class="card card-cover">
+    <div class="card-title"><span>✉️</span> Cover Letter Generator</div>
+
+    <!-- Two textareas side by side -->
+    <div class="grid-2" style="margin-bottom:0">
+      <div>
+        <div class="section-label" style="margin-top:0">Your Resume</div>
+        <textarea id="clResume" placeholder="Paste your resume here..." style="min-height:140px;"></textarea>
+      </div>
+      <div>
+        <div class="section-label" style="margin-top:0">Job Description</div>
+        <textarea id="clJobDesc" placeholder="Paste the job description here..." style="min-height:140px;"></textarea>
+      </div>
+    </div>
+
+    <!-- Tone selector buttons -->
+    <div style="margin-top:14px;">
+      <div class="section-label" style="margin-top:0; margin-bottom:8px">Writing Tone</div>
+      <div class="tone-row">
+        <button class="tone-btn active" id="tone-professional" onclick="setTone('professional')">💼 Professional</button>
+        <button class="tone-btn"        id="tone-enthusiastic" onclick="setTone('enthusiastic')">🚀 Enthusiastic</button>
+        <button class="tone-btn"        id="tone-concise"      onclick="setTone('concise')">⚡ Concise</button>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-purple" onclick="generateCoverLetter()">✨ Generate Cover Letter</button>
+      <!-- Download button hidden until letter is generated -->
+      <button class="btn btn-ghost" onclick="downloadCoverLetterPDF()" id="clDownloadBtn" style="display:none">📄 Download PDF</button>
+    </div>
+
+    <div id="clResult"></div>
+  </div>
+
+  <!-- ==================== INTERVIEW PREP AI ==================== -->
+  <div class="card card-interview">
+    <div class="card-title"><span>🎤</span> Interview Prep AI</div>
+
+    <div class="input-row" style="margin-bottom:14px">
+      <input id="ipRole"    placeholder="Target Role (e.g. Backend Engineer)">
+      <input id="ipCompany" placeholder="Company (optional)">
+    </div>
+
+    <div style="margin-bottom:14px">
+      <div class="section-label" style="margin-top:0; margin-bottom:6px">
+        Job Description
+        <span style="font-weight:400; text-transform:none; letter-spacing:0">(optional — improves quality)</span>
+      </div>
+      <textarea id="ipJobDesc" placeholder="Paste job description for role-specific questions..." style="min-height:70px;"></textarea>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-amber" onclick="generateInterviewPrep()">🎤 Generate Questions</button>
+    </div>
+
+    <!-- Q&A results appear here -->
+    <div id="ipResult" style="margin-top:18px;"></div>
+  </div>
+
+  <!-- ==================== ANALYTICS + APPLICATIONS (side by side) ==================== -->
+  <div class="grid-2" style="align-items:start">
+
+    <!-- Donut chart -->
+    <div class="card">
+      <div class="card-title"><span>📊</span> Analytics</div>
+      <div class="chart-container">
+        <canvas id="chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Job list -->
+    <div class="card">
+      <div class="card-title"><span>📋</span> Applications</div>
+      <div id="jobs">
+        <div class="empty">
+          <div class="empty-icon">📭</div>
+          Log in to see your jobs
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- end .container -->
+
+
+<!-- ============================================================
+     JAVASCRIPT
+     ============================================================ -->
+<script>
+
+// GLOBALS 
+let token = localStorage.getItem("token");
+
+const BASE = "https://ai-job-tracker-4131.onrender.com";
+let selectedTone = "professional";          // default cover letter tone
+
+
+// TONE SELECTOR (Cover Letter)
+function setTone(tone) {
+  selectedTone = tone;
+
+  // Remove active class from all tone buttons
+  document.querySelectorAll('.tone-btn').forEach(btn => btn.classList.remove('active'));
+
+  // Add active class to the clicked one
+  document.getElementById('tone-' + tone).classList.add('active');
+}
+
+
+//  AUTH 
+
+function register() {
+  fetch(BASE + "/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      username: username.value,
+      password: password.value
+    })
+  })
+  .then(r => r.json())
+  .then(data => alert(data.message || data.error));
+}
+
+function login() {
+  fetch(BASE + "/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      username: username.value,
+      password: password.value
+    })
+  })
+  .then(res => {
+    if (!res.ok) {
+      throw new Error("Server error: " + res.status);
+    }
+    return res.json();
+  })
+  .then(data => {
+    if (data.token) {
+      token = data.token;
+      localStorage.setItem("token", token);
+      alert("✅ Login successful");
+      loadJobs();
+    } else {
+      alert(data.error || "Login failed");
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert("❌ Backend error — check console");
+  });
+}
+
+function logout() {
+  localStorage.removeItem("token");
+  token = null;
+  location.reload();
+}
+
+
+// ADD JOB 
+function addJob() {
+  if (!token) {
+    alert("⚠️ Please login first");
+    return;
+  }
+  fetch(BASE + "/add-job", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token
+    },
+    body: JSON.stringify({
+      company: company.value,
+      role: role.value,
+      link: link.value,
+      notes: notes.value,
+      deadline: deadline.value
+    })
+  })
+  .then(res => {
+    if (!res.ok) throw new Error("Failed");
+    return res.json();
+  })
+  .then(() => {
+    alert("✅ Job added");
+    loadJobs(); // 🔥 MUST
+  })
+  .catch(err => {
+    console.error(err);
+    alert("❌ Error adding job");
+  });
+}
+
+
+//  DEADLINE HELPER 
+// Returns an object with { label, css class, diff in days }
+function getDeadlineStatus(deadlineStr) {
+  if (!deadlineStr) return null;
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0); // midnight today
+
+  const dl = new Date(deadlineStr);
+  dl.setHours(0, 0, 0, 0);
+
+  const diff = Math.round((dl - now) / 86400000); // days difference
+
+  if (diff < 0)  return { label: Math.abs(diff) + "d overdue", cls: "overdue", diff };
+  if (diff === 0) return { label: "Due today!",                 cls: "today",   diff };
+  if (diff <= 2) return { label: diff + "d left",              cls: "soon",    diff };
+  return              { label: deadlineStr,                    cls: "ok",      diff };
+}
+
+
+//  DEADLINE BANNER
+// Shows the top warning banner if any jobs are due within 2 days
+function updateDeadlineBanner(jobs) {
+  // Filter only urgent jobs (deadline today, tomorrow, or overdue)
+  const urgentJobs = jobs.filter(j => {
+    if (!j.deadline) return false;
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const dl  = new Date(j.deadline); dl.setHours(0, 0, 0, 0);
+    return (dl - now) / 86400000 <= 2;
+  });
+
+  const banner = document.getElementById('deadlineBanner');
+
+  // Hide banner if no urgent jobs
+  if (!urgentJobs.length) {
+    banner.style.display = 'none';
+    return;
+  }
+
+  // Show banner
+  banner.style.display = 'block';
+
+  // Count overdue ones
+  const overdueJobs = urgentJobs.filter(j => {
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    return new Date(j.deadline) < now;
+  });
+
+  // Set the message text
+  document.getElementById('bannerText').textContent =
+    "You have " + urgentJobs.length + " application" + (urgentJobs.length > 1 ? "s" : "") +
+    " needing attention" + (overdueJobs.length ? " — " + overdueJobs.length + " overdue!" : "");
+
+  // Render one pill per urgent job
+  document.getElementById('bannerJobs').innerHTML = urgentJobs.map(j => {
+    const s = getDeadlineStatus(j.deadline);
+    return `<span class="banner-job-pill ${s.diff < 0 ? 'overdue' : ''}">${j.company} · ${s.label}</span>`;
+  }).join('');
+}
+
+
+// LOAD JOBS 
+function loadJobs() {
+  if (!token) {
+    alert("⚠️ Please login first");
+    return;
+  }
+  fetch(BASE + "/jobs", {
+    headers: { "Authorization": "Bearer " + token }
+  })
+  .then(res => {
+    if (!res.ok) throw new Error("Failed to load jobs");
+    return res.json();
+  })
+  .then(data => {
+    let countApplied = 0, countInterview = 0, countRejected = 0;
+    const jobsDiv = document.getElementById("jobs");
+
+    if (!data.length) {
+      jobsDiv.innerHTML = `<div class="empty"><div class="empty-icon">🗂️</div>No applications yet</div>`;
+      applied.innerText = interview.innerText = rejected.innerText = 0;
+      drawChart(0, 0, 0);
+      document.getElementById('deadlineBanner').style.display = 'none';
+      return;
+    }
+
+    updateDeadlineBanner(data);
+
+    jobsDiv.innerHTML = "";
+
+    data.forEach(job => {
+      if (job.status === "Applied") countApplied++;
+      if (job.status === "Interview") countInterview++;
+      if (job.status === "Rejected") countRejected++;
+
+      const ds = job.deadline ? getDeadlineStatus(job.deadline) : null;
+      const isUrgent = ds && ds.diff <= 2;
+
+      const badgeClass =
+        job.status === "Interview" ? "badge-interview" :
+        job.status === "Rejected" ? "badge-rejected" :
+        "badge-applied";
+
+      jobsDiv.innerHTML += `
+        <div class="job ${isUrgent ? 'urgent-job' : ''}">
+          <div class="job-left">
+            <div class="job-company">${job.company}${isUrgent ? ' 🔔' : ''}</div>
+            <div class="job-role">${job.role}</div>
+          </div>
+          <div class="job-right">
+  <span class="badge ${badgeClass}">${job.status}</span>
+
+  <button class="btn btn-success"
+    style="padding:6px 12px; font-size:12px"
+    onclick="update(${job.id}, 'Interview')">
+    → Interview
+  </button>
+
+  <button class="btn btn-danger"
+    style="padding:6px 12px; font-size:12px"
+    onclick="update(${job.id}, 'Rejected')">
+    Reject
+  </button>
+
+  <button class="btn btn-ghost"
+    style="padding:6px 10px; font-size:12px"
+    onclick="deleteJob(${job.id})">
+    ✕
+  </button>
+</div>
+        </div>`;
+    });
+
+    applied.innerText = countApplied;
+    interview.innerText = countInterview;
+    rejected.innerText = countRejected;
+
+    drawChart(countApplied, countInterview, countRejected);
+  })
+  .catch(err => {
+    console.error(err);
+    alert("❌ Failed to load jobs");
+  });
+}
+
+//  UPDATE JOB STATUS 
+function update(id, status) {
+  if (!token) {
+    alert("⚠️ Please login first");
+    return;
+  }
+  fetch(BASE + "/update-status/" + id, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token
+    },
+    body: JSON.stringify({ status })
+  })
+  .then(res => {
+    if (!res.ok) throw new Error("Failed");
+    loadJobs();
+  })
+  .catch(err => {
+    console.error(err);
+    alert("❌ Operation failed");
+  });
+}
+
+
+//  DELETE JOB 
+function deleteJob(id) {
+  if (!token) {
+    alert("⚠️ Please login first");
+    return;
+  } 
+  fetch(BASE + "/delete-job/" + id, {
+    method: "DELETE",
+    headers: { "Authorization": "Bearer " + token }
+  })
+  .then(res => {
+    if (!res.ok) throw new Error("Failed");
+    loadJobs();
+  })
+  .catch(err => {
+    console.error(err);
+    alert("❌ Operation failed");
+  });
+}
+
+
+// AI RESUME ANALYZER 
+function analyzeResume() {
+  const out = document.getElementById("aiResult");
+  out.innerHTML = `<div class="loading"><div class="spinner"></div>Analyzing resume...</div>`;
+
+  fetch(BASE + "/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      resume: document.getElementById("resume").value,
+      role:   document.getElementById("jobRoleAI").value
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    let text = data.result || data.error || "No response";
+
+    // Format the AI response into nice HTML
+    let formatted = text
+      // Remove intro fluff
+      .replace(/To provide a proper analysis[\s\S]*?Engineer\./i, "")
+
+      // Convert "Score: 75" into a colored progress bar
+      .replace(/Score[:\s]*\*?\*?\s*(\d+)/i, (match, score) => {
+        score = parseInt(score);
+        let color = score >= 70 ? "green" : score >= 50 ? "yellow" : "red";
+        return `
+          <h2>📊 ATS Score: ${score}%</h2>
+          <div class="bar-wrap">
+            <div class="bar-fill ${color}" style="width:${score}%">${score}%</div>
+          </div>`;
+      })
+      .replace(/\/100/g, "")
+      .replace(/out of 100/gi, "")
+      .replace(/\*\*/g, "")     // remove bold markdown
+      .replace(/###/g, "")      // remove heading markdown
+      .replace(/Missing Keywords:/g,    `<div class="section-label">🔑 Missing Keywords</div>`)
+      .replace(/Improvements:/g,        `<div class="section-label">🚀 Improvements</div>`)
+      .replace(/Suggestions:/g,         `<div class="section-label">✨ Suggestions</div>`)
+      .replace(/Better Bullet/g,        `<div class="section-label">✨ Suggestions</div>`)
+      .replace(/- /g, "• ")     // dashes → bullet dots
+      .replace(/\n/g, "<br>");  // newlines → HTML line breaks
+
+    out.innerHTML = formatted;
+  });
+}
+
+
+// JOB DESCRIPTION MATCHER 
+function matchJob() {
+  const out = document.getElementById("matchResult");
+  out.innerHTML = `<div class="loading"><div class="spinner"></div>Matching...</div>`;
+
+  fetch(BASE + "/match-job", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      resume:          document.getElementById("resumeMatch").value,
+      job_description: document.getElementById("jobDesc").value
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.error) {
+      out.innerHTML = `<p style="color:var(--red)">${data.error}</p>`;
+      return;
+    }
+
+    // Helper: pick bar color based on score
+    const getColor = score => score >= 70 ? "green" : score >= 50 ? "yellow" : "red";
+
+    out.innerHTML = `
+      <h2>🎯 Match Score: ${data.match_score}%</h2>
+      <div class="bar-wrap"><div class="bar-fill ${getColor(data.match_score)}" style="width:${data.match_score}%">${data.match_score}%</div></div>
+
+      <div class="section-label">📊 Keyword Match: ${data.keyword_score}%</div>
+      <div class="bar-wrap"><div class="bar-fill ${getColor(data.keyword_score)}" style="width:${data.keyword_score}%">${data.keyword_score}%</div></div>
+
+      <div class="section-label">✅ Skills Match</div>
+      <div class="tags">${data.skills_match.map(s => `<span class="tag">${s}</span>`).join("")}</div>
+
+      <div class="section-label">🔑 Missing Keywords</div>
+      <div class="tags">${data.missing_keywords.map(s => `<span class="tag tag-red">${s}</span>`).join("")}</div>
+
+      <div class="section-label">💪 Strengths</div>
+      <ul>${data.strengths.map(s => `<li>${s}</li>`).join("")}</ul>
+
+      <div class="section-label">⚠️ Weaknesses</div>
+      <ul>${data.weaknesses.map(s => `<li>${s}</li>`).join("")}</ul>
+
+      <div class="section-label">🚀 Suggestions</div>
+      <ul>${data.suggestions.map(s => `<li>${s}</li>`).join("")}</ul>`;
+  });
+}
+
+
+//  RESUME OPTIMIZER 
+function optimizeResume() {
+  const out = document.getElementById("optResult");
+  out.innerHTML = `<div class="loading"><div class="spinner"></div>Optimizing resume...</div>`;
+
+  fetch(BASE + "/optimize-resume", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      resume:          document.getElementById("resumeOpt").value,
+      job_description: document.getElementById("jobDescOpt").value
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.error) {
+      out.innerHTML = `<p style="color:var(--red)">❌ ${data.error}</p>`;
+      return;
+    }
+
+    // Clean up the AI response text
+    let formatted = data.result
+      .replace(/\*\*/g, "")
+      .replace(/###/g, "")
+      .replace(/##/g, "")
+      .replace(/Final ATS Resume:/gi, "")
+      .replace(/Final Resume:/gi, "")
+      .replace(/Optimized/gi, "")
+      .replace(/Improved/gi, "")
+      .replace(/Points:/gi, "")
+      .replace(/PROFESSIONAL/gi, "")
+      .replace(/\bProfessional\b/gi, "")
+      .replace(/\n:\n/g, "\n")
+      .replace(/:\n/g, "\n")
+      .replace(/:\s*/g, "")
+      .replace(/Summary[\s\S]*?Summary/gi, "Summary")
+      .replace(/\bSUMMARY\b/gi,        "<h3>Summary</h3>")
+      .replace(/\bTECHNICAL SKILLS\b/gi, "<h3>Technical Skills</h3>")
+      .replace(/\bEXPERIENCE\b/gi,     "<h3>Experience</h3>")
+      .replace(/\bEDUCATION\b/gi,      "<h3>Education</h3>")
+      .replace(/\bCERTIFICATIONS\b/gi, "<h3>Certifications</h3>")
+      .replace(/- /g, "• ")
+      .replace(/\n\n+/g, "<br><br>")
+      .replace(/\n/g, "<br>");
+
+    // Remove duplicate section headings
+    let seenHeadings = new Set();
+    formatted = formatted.replace(/<h3>(.*?)<\/h3>/g, (match, title) => {
+      if (seenHeadings.has(title)) return ""; // skip duplicate
+      seenHeadings.add(title);
+      return match;
+    });
+
+    // Wrap in white PDF-ready box
+    out.innerHTML = `<div id="resumePDF">${formatted}</div>`;
+  })
+  .catch(() => {
+    out.innerHTML = `<p style="color:var(--red)">❌ Server Error</p>`;
+  });
+}
+
+function downloadResumePDF() {
+  const el = document.getElementById("optResult");
+  if (!el || el.innerHTML.trim() === "") {
+    alert("⚠️ Please optimize resume first!");
+    return;
+  }
+  exportPDF(el, "Optimized_Resume.pdf");
+}
+
+
+//  COVER LETTER GENERATOR 
+function generateCoverLetter() {
+  const out       = document.getElementById("clResult");
+  const resumeVal = document.getElementById("clResume").value.trim();
+  const jobVal    = document.getElementById("clJobDesc").value.trim();
+
+  // Validate both fields are filled
+  if (!resumeVal || !jobVal) {
+    out.innerHTML = `<p style="color:var(--red); margin-top:12px">⚠️ Please paste both your resume and the job description.</p>`;
+    return;
+  }
+
+  out.innerHTML = `<div class="loading"><div class="spinner spinner-purple"></div>Writing your cover letter...</div>`;
+  document.getElementById("clDownloadBtn").style.display = "none";
+
+  fetch(BASE + "/generate-cover-letter", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      resume:          resumeVal,
+      job_description: jobVal,
+      tone:            selectedTone
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.error) {
+      out.innerHTML = `<p style="color:var(--red)">❌ ${data.error}</p>`;
+      return;
+    }
+
+    const text      = data.result.trim();
+    const wordCount = text.split(/\s+/).length;
+
+    // Show the letter with a copy button overlay
+    out.innerHTML = `
+      <div style="position:relative">
+        <div class="cl-output" id="clText">${text}</div>
+        <button class="copy-btn" onclick="copyLetter()">📋 Copy</button>
+      </div>
+      <div class="cl-word-count">~${wordCount} words</div>`;
+
+    // Show download button now that we have content
+    document.getElementById("clDownloadBtn").style.display = "inline-flex";
+  })
+  .catch(() => {
+    out.innerHTML = `<p style="color:var(--red)">❌ Server Error</p>`;
+  });
+}
+
+function copyLetter() {
+  // Copy cover letter text to clipboard
+  navigator.clipboard.writeText(document.getElementById("clText").innerText)
+    .then(() => {
+      const btn = document.querySelector(".copy-btn");
+      btn.textContent = "✅ Copied!";
+      setTimeout(() => btn.textContent = "📋 Copy", 2000); // reset after 2s
+    });
+}
+
+function downloadCoverLetterPDF() {
+  const clText = document.getElementById("clText");
+  if (!clText) {
+    alert("⚠️ Generate a cover letter first!");
+    return;
+  }
+
+  // Build a clean white container for the PDF
+  const wrapper = document.createElement("div");
+  wrapper.style.cssText = "background:white; color:#111; padding:48px; font-family:Georgia,serif; font-size:14px; line-height:1.8; max-width:680px;";
+  wrapper.innerText = clText.innerText;
+
+  exportPDF(wrapper, "Cover_Letter.pdf");
+}
+
+
+//  INTERVIEW PREP AI 
+function generateInterviewPrep() {
+  const out     = document.getElementById("ipResult");
+  const role    = document.getElementById("ipRole").value.trim();
+  const jobDesc = document.getElementById("ipJobDesc").value.trim();
+
+  if (!role && !jobDesc) {
+    out.innerHTML = `<p style="color:var(--red); margin-top:4px">⚠️ Please enter a role or paste a job description.</p>`;
+    return;
+  }
+
+  out.innerHTML = `<div class="loading"><div class="spinner spinner-amber"></div>Generating interview questions...</div>`;
+
+  fetch(BASE + "/interview-prep", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      role:            role,
+      job_description: jobDesc
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.error) {
+      out.innerHTML = `<p style="color:var(--red)">❌ ${data.error}</p>`;
+      return;
+    }
+
+    // Build accordion cards for a list of Q&A items
+    function buildQuestionCards(list) {
+      return list.map((item, index) => `
+        <div class="ip-question-card" onclick="toggleQuestion(this)">
+          <div class="ip-question-header">
+            <span class="ip-q-num">Q${index + 1}</span>
+            <span class="ip-q-text">${item.question}</span>
+            <span class="ip-chevron">▼</span>
+          </div>
+          <div class="ip-answer">
+            <div class="ip-answer-label">✦ Model Answer</div>
+            ${item.answer}
+          </div>
+        </div>`
+      ).join("");
+    }
+
+    // Render tabs + question cards
+    out.innerHTML = `
+      <div class="ip-tabs">
+        <button class="ip-tab active" id="tab-technical"  onclick="switchTab('technical')">⚙️ Technical (${data.technical.length})</button>
+        <button class="ip-tab"        id="tab-behavioral" onclick="switchTab('behavioral')">💬 Behavioral (${data.behavioral.length})</button>
+      </div>
+      <div class="ip-questions active" id="ipq-technical">
+        ${buildQuestionCards(data.technical)}
+      </div>
+      <div class="ip-questions" id="ipq-behavioral">
+        ${buildQuestionCards(data.behavioral)}
+      </div>`;
+  })
+  .catch(() => {
+    out.innerHTML = `<p style="color:var(--red)">❌ Server Error</p>`;
+  });
+}
+
+// Toggle a single question card open/closed
+function toggleQuestion(card) {
+  card.classList.toggle('open');
+}
+
+// Switch between Technical and Behavioral tabs
+function switchTab(tab) {
+  document.querySelectorAll('.ip-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.ip-questions').forEach(q => q.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('ipq-' + tab).classList.add('active');
+}
+
+
+//  SHARED PDF EXPORT 
+function exportPDF(element, filename) {
+  
+  const clone = element.cloneNode(true);
+  clone.style.background  = "white";
+  clone.style.color       = "black";
+  clone.style.padding     = "25px";
+  clone.style.fontFamily  = "Arial, sans-serif";
+  clone.style.lineHeight  = "1.6";
+
+  // Fix heading colors for print
+  clone.querySelectorAll("h3").forEach(h => h.style.color = "#0b6efd");
+  clone.querySelectorAll("h4").forEach(h => h.style.color = "#198754");
+
+  const temp = document.createElement("div");
+  temp.appendChild(clone);
+
+  html2pdf().set({
+    margin:     0.5,
+    filename:   filename,
+    image:      { type: 'jpeg', quality: 1 },
+    html2canvas:{ scale: 2, useCORS: true },
+    jsPDF:      { unit: 'in', format: 'letter', orientation: 'portrait' }
+  }).from(temp).save();
+}
+
+
+// ANALYTICS CHART 
+let chart; // keep reference so we can destroy before redrawing
+
+function drawChart(applied, interview, rejected) {
+  if (chart) chart.destroy(); 
+
+  chart = new Chart(document.getElementById("chart"), {
+    type: "doughnut",
+    data: {
+      labels: ["Applied", "Interview", "Rejected"],
+      datasets: [{
+        data: [applied, interview, rejected],
+        backgroundColor: [
+          "rgba(61,155,255,0.8)",
+          "rgba(0,229,176,0.8)",
+          "rgba(255,94,125,0.8)"
+        ],
+        borderColor:  ["#3d9bff", "#00e5b0", "#ff5e7d"],
+        borderWidth: 2
+      }]
+    },
+    options: {
+      plugins: {
+        legend: {
+          labels: {
+            color: "#6b7a96",
+            font: { size: 12, family: "DM Sans" }
+          }
+        }
+      },
+      cutout: "65%" // makes it a donut instead of solid pie
+    }
+  });
+}
+
+
+//  AUTO LOAD on page open 
+// If user is already logged in (token exists), load their jobs immediately
+if (token) loadJobs();
+
+</script>
+</body>
+</html>
