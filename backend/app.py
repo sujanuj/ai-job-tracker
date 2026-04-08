@@ -462,6 +462,7 @@ Better Bullet Suggestions:
         return jsonify({"error": str(e)}), 500
     
 import os
+from flask import send_file
 
 @app.route("/")
 def serve_ui():
