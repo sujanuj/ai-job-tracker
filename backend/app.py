@@ -503,10 +503,6 @@ def serve_ui():
         "index.html"
     )
 
-with app.app_context():
-    db.create_all()
-
-
 # ================= RUN =================
 import os
 
