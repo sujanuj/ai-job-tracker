@@ -146,16 +146,14 @@ def add_job():
     return jsonify({"message": "Job added"})
 
 @app.route("/jobs", methods=["GET"])
-@jwt_required()
 def get_jobs():
-    user_id = int(get_jwt_identity())
+    user_id = 1
     jobs = JobApplication.query.filter_by(user_id=user_id).all()
     return jsonify([j.to_dict() for j in jobs])
 
 @app.route("/update-status/<int:job_id>", methods=["PUT"])
-@jwt_required()
 def update_status(job_id):
-    user_id = int(get_jwt_identity())
+    user_id = 1
     data = request.json
 
     job = JobApplication.query.filter_by(id=job_id, user_id=user_id).first()
@@ -168,9 +166,8 @@ def update_status(job_id):
     return jsonify({"message": "Updated"})
 
 @app.route("/delete-job/<int:job_id>", methods=["DELETE"])
-@jwt_required()
 def delete_job(job_id):
-    user_id = int(get_jwt_identity())
+    user_id = 1
 
     job = JobApplication.query.filter_by(id=job_id, user_id=user_id).first()
     if not job:
@@ -182,9 +179,8 @@ def delete_job(job_id):
     return jsonify({"message": "Deleted"})
 
 @app.route("/edit-job/<int:job_id>", methods=["PUT"])
-@jwt_required()
 def edit_job(job_id):
-    user_id = int(get_jwt_identity())
+    user_id = 1
     data = request.json
 
     job = JobApplication.query.filter_by(id=job_id, user_id=user_id).first()
