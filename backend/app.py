@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from openai import OpenAI
+from flask_jwt_extended import JWTManager
 import os
 import json
 
