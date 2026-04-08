@@ -1082,12 +1082,17 @@ function login() {
       password: password.value
     })
   })
-  .then(res => {
-    if (!res.ok) {
-      throw new Error("Server error: " + res.status);
-    }
-    return res.json();
-  })
+  .then(res => res.json())
+.then(data => {
+  if (data.token) {
+    token = data.token;
+    localStorage.setItem("token", token);
+    alert("✅ Login successful");
+    loadJobs();
+  } else {
+    alert(data.error); // show actual error
+  }
+})
   .then(data => {
     if (data.token) {
       token = data.token;
