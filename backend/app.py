@@ -461,14 +461,15 @@ Better Bullet Suggestions:
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
+from flask import send_from_directory
 import os
-from flask import send_file
 
 @app.route("/")
 def serve_ui():
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    path = os.path.join(base_dir, "index.html")
-    return send_file(path)
+    return send_from_directory(
+        os.path.dirname(os.path.abspath(__file__)),
+        "index.html"
+    )
 
 with app.app_context():
     db.create_all()
