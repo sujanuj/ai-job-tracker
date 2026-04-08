@@ -60,6 +60,7 @@ with app.app_context():
 
 @app.route("/login", methods=["POST"])
 def login():
+    print("🔥 LOGIN ROUTE HIT")
     try:
         data = request.get_json()
         print("DEBUG LOGIN DATA:", data)
@@ -499,3 +500,4 @@ import os
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
