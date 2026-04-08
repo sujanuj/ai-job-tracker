@@ -1116,6 +1116,7 @@ function addJob() {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "Authorization": "Bearer " + token
     },
     body: JSON.stringify({
       company: company.value,
@@ -1208,6 +1209,9 @@ function loadJobs() {
     return;
   }
   fetch(BASE + "/jobs", {
+    headers: {
+        "Authorization": "Bearer " + token
+    }
   })
   .then(res => {
     if (!res.ok) throw new Error("Failed to load jobs");
@@ -1291,8 +1295,10 @@ function update(id, status) {
     return;
   }
   fetch(BASE + "/update-status/" + id, {
+    
     method: "PUT",
     headers: {
+      "Authorization": "Bearer " + token,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ status })
@@ -1316,7 +1322,7 @@ function deleteJob(id) {
   } 
   fetch(BASE + "/delete-job/" + id, {
     method: "DELETE",
-    headers: { }
+    headers: { "Authorization": "Bearer " + token }
   })
   .then(res => {
     if (!res.ok) throw new Error("Failed");
