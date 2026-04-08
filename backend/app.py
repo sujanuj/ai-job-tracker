@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from openai import OpenAI
-from flask_jwt_extended import JWTManager
 import os
 import json
 
@@ -19,7 +18,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///jobs.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
-jwt = JWTManager(app)
 api_key = os.getenv("OPENAI_API_KEY")
 
 if api_key:
