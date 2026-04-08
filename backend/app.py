@@ -466,17 +466,9 @@ from flask import send_file
 
 @app.route("/")
 def serve_ui():
-    try:
-        path = os.path.join(os.getcwd(), "index.html")
-        print("Looking for:", path)
-
-        if not os.path.exists(path):
-            return "index.html NOT FOUND", 500
-
-        return send_file(path)
-
-    except Exception as e:
-        return f"ERROR: {str(e)}", 500
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(base_dir, "index.html")
+    return send_file(path)
 
 with app.app_context():
     db.create_all()
