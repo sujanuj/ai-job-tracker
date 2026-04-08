@@ -62,40 +62,72 @@ class JobApplication(db.Model):
 with app.app_context():
     db.create_all()
 
-# AUTH 
-@app.route("/register", methods=["POST"])
-def register():
-    data = request.json
-
-    if User.query.filter_by(username=data["username"]).first():
-        return jsonify({"error": "User exists"}), 400
-
-    user = User(username=data["username"], password=data["password"])
-    db.session.add(user)
-    db.session.commit()
-
-    return jsonify({"message": "User created"})
+# AUTH
 
 @app.route("/login", methods=["POST"])
 def login():
-    data = request.json
+    try:
+        data = request.get_json()
+        print("DEBUG LOGIN DATA:", data)
 
-    user = User.query.filter_by(
-        username=data.get("username"),
-        password=data.get("password")
-    ).first()
+        if not data:
+            return jsonify({"error": "No data received"}), 400
 
-    if not user:
-        return jsonify({"error": "Invalid credentials"}), 401
+        username = data.get("username")
+        password = data.get("password")
 
-    token = create_access_token(identity=str(user.id))
-    return jsonify({"token": token})
+        if not username or not password:
+            return jsonify({"error": "Missing fields"}), 400
+
+        user = User.query.filter_by(username=username).first()
+
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        if user.password != password:
+            return jsonify({"error": "Wrong password"}), 401
+
+        return jsonify({"token": "dummy-token"})
+    
+    except Exception as e:
+        print("LOGIN ERROR:", str(e))   # 🔥 IMPORTANT
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/register", methods=["POST"])
+def register():
+    try:
+        data = request.get_json()
+        print("DEBUG REGISTER DATA:", data)
+
+        if not data:
+            return jsonify({"error": "No data received"}), 400
+
+        username = data.get("username")
+        password = data.get("password")
+
+        if not username or not password:
+            return jsonify({"error": "Missing fields"}), 400
+
+        # Check if user already exists
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            return jsonify({"error": "User already exists"}), 400
+
+        # Create new user
+        new_user = User(username=username, password=password)
+        db.session.add(new_user)
+        db.session.commit()
+
+        return jsonify({"message": "User registered successfully"})
+    
+    except Exception as e:
+        print("REGISTER ERROR:", str(e))   # 🔥 IMPORTANT
+        return jsonify({"error": str(e)}), 500
 
 # JOB CRUD 
 @app.route("/add-job", methods=["POST"])
-@jwt_required()
 def add_job():
-    user_id = int(get_jwt_identity())
+    user_id = 1
     data = request.json
 
     job = JobApplication(
