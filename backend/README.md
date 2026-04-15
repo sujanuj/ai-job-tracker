@@ -1,4 +1,4 @@
-# 🚀 AI Job Tracker
+#  AI Job Tracker
 
 A full-stack AI-powered job application tracking system built with Flask and OpenAI. Track your job applications, analyze your resume, generate cover letters, and prepare for interviews — all in one place.
 
@@ -10,20 +10,20 @@ A full-stack AI-powered job application tracking system built with Flask and Ope
 
 | Feature | Description |
 |---|---|
-| 📋 **Job Tracker** | Add, update, and delete job applications with status tracking |
-| 📊 **Analytics Dashboard** | Visual donut chart showing Applied / Interview / Rejected stats |
-| ⏰ **Deadline Alerts** | Automatic banner alerts for upcoming and overdue deadlines |
-| 🤖 **AI Resume Analyzer** | ATS scoring with missing keywords and improvement suggestions |
-| 🎯 **Job Matcher** | Match your resume to a job description with a compatibility score |
-| 🔥 **Resume Optimizer** | AI-rewritten resume tailored to a specific job description |
-| ✉️ **Cover Letter Generator** | Personalized cover letters in Professional / Enthusiastic / Concise tone |
-| 🎤 **Interview Prep AI** | Role-specific technical and behavioral Q&A with model answers |
-| 📄 **PDF Export** | Download optimized resume and cover letter as PDF |
-| 🔐 **User Auth** | Register and login with session-based token authentication |
+|  **Job Tracker** | Add, update, and delete job applications with status tracking |
+|  **Analytics Dashboard** | Visual donut chart showing Applied / Interview / Rejected stats |
+|  **Deadline Alerts** | Automatic banner alerts for upcoming and overdue deadlines |
+|  **AI Resume Analyzer** | ATS scoring with missing keywords and improvement suggestions |
+|  **Job Matcher** | Match your resume to a job description with a compatibility score |
+|  **Resume Optimizer** | AI-rewritten resume tailored to a specific job description |
+|  **Cover Letter Generator** | Personalized cover letters in Professional / Enthusiastic / Concise tone |
+|  **Interview Prep AI** | Role-specific technical and behavioral Q&A with model answers |
+|  **PDF Export** | Download optimized resume and cover letter as PDF |
+|  **User Auth** | Register and login with session-based token authentication |
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 **Backend**
 - Python 3.10
@@ -44,7 +44,7 @@ A full-stack AI-powered job application tracking system built with Flask and Ope
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 ai-job-tracker/
@@ -60,7 +60,7 @@ ai-job-tracker/
 
 ---
 
-## ⚙️ Local Setup
+##  Local Setup
 
 ### Prerequisites
 - Python 3.10+
@@ -107,7 +107,7 @@ http://localhost:10000
 
 ---
 
-## 🌐 Deployment (Render)
+##  Deployment (Render)
 
 This project is deployed on [Render](https://render.com).
 
@@ -125,7 +125,7 @@ Render's free tier spins down after 15 minutes of inactivity. To prevent this, s
 
 ---
 
-## 🔌 API Endpoints
+##  API Endpoints
 
 | Method | Route | Description |
 |---|---|---|
@@ -144,7 +144,7 @@ Render's free tier spins down after 15 minutes of inactivity. To prevent this, s
 
 ---
 
-## 📦 Dependencies
+##  Dependencies
 
 ```
 flask
@@ -158,7 +158,7 @@ gunicorn
 
 ---
 
-## 🔮 Future Improvements
+##  Future Improvements
 
 - [ ] Real JWT authentication (replace dummy token)
 - [ ] Multi-user support with proper session isolation
@@ -170,7 +170,7 @@ gunicorn
 
 ---
 
-## 👨‍💻 Author
+## 👨 Author
 
 **Sujan Uppalli Jayadevappa**  
 M.S. Software Engineering @ Arizona State University  
@@ -178,6 +178,6 @@ M.S. Software Engineering @ Arizona State University
 
 ---
 
-## 📄 License
+##  License
 
 This project is for personal and educational use.
