@@ -490,7 +490,7 @@ import os
 @app.route("/")
 def serve_ui():
     return send_from_directory(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "../frontend"),
+        os.path.dirname(os.path.abspath(__file__)),
         "index.html"
     )
 
